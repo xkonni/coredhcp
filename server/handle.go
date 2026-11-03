@@ -192,7 +192,7 @@ func (l *listener4) HandleMsg4(buf []byte, oob *ipv4.ControlMessage, _peer net.A
 			}
 		}
 	} else {
-		log.Print("MainHandler4: dropping request because response is nil")
+		log.Debugf("MainHandler4: dropping request because response is nil")
 	}
 }
 
