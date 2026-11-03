@@ -33,6 +33,7 @@ type listener4 struct {
 	*ipv4.PacketConn
 	net.Interface
 	handlers []handler.Handler4
+	sourceIP net.IP
 }
 
 type listener interface {
@@ -148,6 +149,7 @@ func Start(config *config.Config) (*Servers, error) {
 				goto cleanup
 			}
 			l4.handlers = handlers4
+			l4.sourceIP = config.Server4.SourceIP
 			srv.listeners = append(srv.listeners, l4)
 			go func() {
 				srv.errors <- l4.Serve()

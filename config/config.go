@@ -44,6 +44,9 @@ func New() *Config {
 type ServerConfig struct {
 	Addresses []net.UDPAddr
 	Plugins   []PluginConfig
+	// SourceIP is an optional source address stamped on outgoing DHCPv4
+	// replies via IP_PKTINFO. Configured via server4.source_address.
+	SourceIP net.IP
 }
 
 // PluginConfig holds the configuration of a plugin
@@ -231,6 +234,18 @@ func (c *Config) parseConfig(ver protocolVersion) error {
 	sc := ServerConfig{
 		Addresses: listeners,
 		Plugins:   plugins,
+	}
+	if ver == protocolV4 {
+		if s := c.v.GetString("server4.source_address"); s != "" {
+			ip := net.ParseIP(s)
+			if ip == nil {
+				return ConfigErrorFromString("dhcpv4: invalid source_address: %s", s)
+			}
+			if ip.To4() == nil {
+				return ConfigErrorFromString("dhcpv4: source_address must be an IPv4 address: %s", s)
+			}
+			sc.SourceIP = ip.To4()
+		}
 	}
 	if ver == protocolV6 {
 		c.Server6 = &sc

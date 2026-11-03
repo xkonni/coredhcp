@@ -187,6 +187,12 @@ func (l *listener4) HandleMsg4(buf []byte, oob *ipv4.ControlMessage, _peer net.A
 				log.Errorf("MainHandler4: Cannot send Ethernet packet: %v", err)
 			}
 		} else {
+			if l.sourceIP != nil {
+				if woob == nil {
+					woob = &ipv4.ControlMessage{}
+				}
+				woob.Src = l.sourceIP
+			}
 			if _, err := l.WriteTo(resp.ToBytes(), woob, peer); err != nil {
 				log.Errorf("MainHandler4: conn.Write to %v failed: %v", peer, err)
 			}
