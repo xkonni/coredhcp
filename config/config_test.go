@@ -4,7 +4,100 @@
 
 package config
 
-import "testing"
+import (
+	"net"
+	"strings"
+	"testing"
+)
+
+func loadConfig(yaml string) (*Config, error) {
+	c := New()
+	c.v.SetConfigType("yml")
+	if err := c.v.ReadConfig(strings.NewReader(yaml)); err != nil {
+		return nil, err
+	}
+	if err := c.parseConfig(protocolV4); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func TestSourceAddress(t *testing.T) {
+	tests := []struct {
+		name      string
+		yaml      string
+		wantIP    net.IP
+		wantError bool
+	}{
+		{
+			name: "valid IPv4",
+			yaml: `
+server4:
+  listen:
+    - "0.0.0.0:67"
+  source_address: "10.0.0.1"
+  plugins:
+    - lease_time: 3600s`,
+			wantIP: net.IP{10, 0, 0, 1},
+		},
+		{
+			name: "absent source_address",
+			yaml: `
+server4:
+  listen:
+    - "0.0.0.0:67"
+  plugins:
+    - lease_time: 3600s`,
+			wantIP: nil,
+		},
+		{
+			name: "invalid IP",
+			yaml: `
+server4:
+  listen:
+    - "0.0.0.0:67"
+  source_address: "not-an-ip"
+  plugins:
+    - lease_time: 3600s`,
+			wantError: true,
+		},
+		{
+			name: "IPv6 rejected",
+			yaml: `
+server4:
+  listen:
+    - "0.0.0.0:67"
+  source_address: "2001:db8::1"
+  plugins:
+    - lease_time: 3600s`,
+			wantError: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := loadConfig(tc.yaml)
+			if tc.wantError {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if tc.wantIP == nil {
+				if c.Server4.SourceIP != nil {
+					t.Errorf("expected nil SourceIP, got %v", c.Server4.SourceIP)
+				}
+				return
+			}
+			if !c.Server4.SourceIP.Equal(tc.wantIP) {
+				t.Errorf("SourceIP = %v, want %v", c.Server4.SourceIP, tc.wantIP)
+			}
+		})
+	}
+}
 
 func TestSplitHostPort(t *testing.T) {
 	testcases := []struct {
